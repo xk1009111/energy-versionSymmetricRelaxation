@@ -174,41 +174,40 @@ uv run pyinstaller --onefile --windowed --name "CellAnnealing" ^
 ## Project Structure
 
 ```
-only_annealing/
-├── energy_annealing_main.py      # Main entry point (Tkinter GUI)
-├── requirements.txt            # Python dependencies
-├── setup.bat                   # Windows one-click setup script (uv)
-├── setup.sh                    # Linux/macOS one-click setup script (uv)
-├── build_exe.bat               # PyInstaller build script (uv)
+physicalSRpython/
+├── energy_annealing_main.py       # Main entry point (Tkinter GUI)
+├── initVoronoi.py                 # Voronoi network initialization
+├── requirements.txt               # Python dependencies
+├── setup.bat                      # Windows one-click setup script (uv)
+├── setup.sh                       # Linux/macOS one-click setup script (uv)
+├── build_exe.bat                  # PyInstaller build script (uv)
 ├── .gitignore
 ├── .gitattributes
-├── LICENSE                     # MIT License
-├── README_EN.md                # English documentation
-├── README_CN.md                # Chinese documentation
-├── ANNEALING_FLOW_CN.md        # Annealing algorithm flow documentation (Chinese)
-├── PARAMS_CN_EN.md             # Parameter Chinese-English reference
+├── LICENSE                        # MIT License
+├── README.md
+├── PARAMS_CN_EN.md                # Parameter Chinese-English reference
+├── SymRelax_Energy_Model_Spec.md  # Energy model specification
 │
-├── initVoronoi.py              # Voronoi network initialization
+├── annealing/                     # Energy-based relaxation (annealing)
+│   ├── AnnealingGUI.py            # Unified annealer entry (re-exports energy version)
+│   ├── energy_annealer.py         # Energy annealer wrapper (GUI-facing)
+│   ├── physical_annealer.py       # Physical gradient-descent annealer (core)
+│   └── energy.py                  # Energy functions & gradients (E_cen + λ·E_ang)
 │
-├── annealing/                  # Relaxation (annealing) algorithms
-│   ├── AnnealingGUI.py         # Annealer core (parameterized)
-│   └── annealerUtil.py         # Annealing utility functions
+├── cell/                          # Core cell data
+│   └── CellData.py                # Cell set management & topology refresh
 │
-├── cell/                       # Core cell data & statistics
-│   └── CellData.py             # Cell data management
+├── utillib/                       # Utility libraries
+│   ├── mylib.py                   # Core data structures (Cell, Point, etc.)
+│   ├── fittinglib.py              # Ellipse fitting (R-LMG + least squares)
+│   ├── exportUtils.py             # Excel export utilities
+│   ├── layerMarker.py             # Cell layer marking
+│   └── i18n.py                    # Internationalization (Chinese/English)
 │
-├── scripts/                    # Auxiliary scripts (data collection/testing)
-│   ├── collect_data.py         # Data collection script
-│   ├── collect_iteration_data.py  # Iteration data collection
-│   ├── test_area.py            # Area calculation unit tests
-│   └── DATA_COLLECTION_PLAN.md # Batch data collection plan
+├── tests/                         # Unit tests (pytest)
+│   └── test_physical_annealer.py  # Gradient, scale-invariance, relaxation tests
 │
-└── utillib/                    # Utility libraries
-    ├── mylib.py                # Core data structures (Cell, Point, Line, etc.)
-    ├── fittinglib.py           # Ellipse fitting (R-LMG + least squares)
-    ├── exportUtils.py          # Excel export utilities
-    ├── layerMarker.py          # Cell layer marking
-    └── i18n.py                 # Internationalization (Chinese/English)
+└── batch_lam_net.py               # Batch annealing script (λ × network)
 ```
 
 ***

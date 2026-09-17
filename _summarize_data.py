@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-_summarize_iter.py — 批量退火数据汇总（纯 openpyxl + numpy）。
+_summarize_data.py — 批量退火数据汇总（纯 openpyxl + numpy）。
 
 数据结构: data_fixed/{net}/L{lam}/run{r}/{iter}_{phase}_{type}.xlsx
   net ∈ {grid02, grid10, random}, lam ∈ {0, 1, 10}, r ∈ 1..10, iter ∈ {0, 1}
