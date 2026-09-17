@@ -1,0 +1,22 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Python source files
+*.py text diff=python
+
+# Batch files (should keep CRLF on Windows)
+*.bat text eol=crlf
+
+# Markdown
+*.md text
+
+# Excel files (binary)
+*.xlsx binary
+
+# Images
+*.png binary
+*.gif binary
+
+# Spec files for text vs binary
+*.tcl text
+*.rc text

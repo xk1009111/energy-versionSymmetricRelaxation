@@ -1,0 +1,26 @@
+# ============================================================================
+# 细胞退火工具 - Python 依赖
+# ============================================================================
+# 目标 Python: 3.14+ (经 uv 托管安装)
+# 安装方法:
+#   uv pip install -r requirements.txt
+#   # 或 pip install -r requirements.txt
+#
+# 打包方法 (PyInstaller):
+#   uv pip install pyinstaller
+#   pyinstaller --onefile --windowed energy_annealing_main.py
+# ============================================================================
+# 版本下限均按 Python 3.14 兼容性设定；pip/uv 会自动解析到最新可用版本。
+# 注意: rpy2 为可选依赖 —— 装得上则启用 R-LMG 高精度椭圆拟合；
+#       装不上时 fittinglib 会自动降级为纯 Python/scipy 拟合，不影响主程序运行。
+
+numpy>=2.2
+scipy>=1.15
+matplotlib>=3.10
+openpyxl>=3.1
+shapely>=2.1          # pyenvelope 的运行时依赖（最小外接矩形），需 cp314 wheel
+pyenvelope>=0.1.0     # 纯 Python，py3-none-any，版本固定为 0.1（上游无新版）
+rpy2>=3.6.5           # 3.6.5 起修复 Windows 兼容；可选，缺失则降级
+
+# PyInstaller (打包用，如需打包为 exe)
+# pyinstaller>=6.0.0
