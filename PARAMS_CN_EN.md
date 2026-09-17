@@ -27,9 +27,15 @@
 | 键名 | 中文 | 英文 |
 |------|------|------|
 | cell_annealer | 细胞退火器 | Cell Annealer |
-| anneal_rate | 退火因子 (γ): | Relaxation factor (γ): |
+| anneal_rate_energy | 步长 μ (γ): | Step size μ (γ): |
 | anneal_times | 退火轮次: | Iterations: |
 | anneal_edge | 边缘顶点参与退火: | Include Marginal Vertices in Annealing: |
+| lambda_label | λ（=κ_a/κ_c）: | λ (=κ_a/κ_c): |
+| lambda_schedule | λ 退火调度（动态）: | λ Annealing Schedule (dynamic): |
+| lambda_start | λ 起点: | λ start: |
+| lambda_end | λ 终点: | λ end: |
+| current_lambda | 当前 λ: | Current λ: |
+| serial_descending | 串行降序 | Serial Descending |
 | yes | 是 | Yes |
 | no | 否 | No |
 | inner_vertices_hint | 内部顶点：若移动后对应3个内角平方和增大则禁止退火 | Inner Vertices: Forbid annealing if sum of squares of 3 interior angles increases after movement |
@@ -39,10 +45,23 @@
 
 | 键名 | 中文 | 英文 |
 |------|------|------|
-| auxiliary_lines | 辅助线 | Auxiliary Lines |
 | ellipse_fitting | 椭圆拟合 | Ellipse Fitting |
 | export_data | 输出数据 | Export Data |
 | undo | 回退 | Undo |
+
+## 能量观察窗口
+
+| 键名 | 中文 | 英文 |
+|------|------|------|
+| energy_window_title | 能量曲线（按"执行退火"累积） | Energy Curve (accumulated per "Execute Annealing") |
+| energy_xlabel | 退火步 | Annealing Step |
+| energy_ylabel | 能量 | Energy |
+| energy_total | E_total | E_total |
+| energy_cen | E_cen | E_cen |
+| energy_ang | λ·E_ang | λ·E_ang |
+| status_stable | [已稳定] | [Stable] |
+| status_converging | [收敛中] | [Converging] |
+| status_not_descent | [未下降?] | [Not decreasing?] |
 
 ## 统计信息
 
@@ -84,7 +103,6 @@
 | error_param | 参数错误：{error} | Parameter error: {error} |
 | complete | 完成 | Complete |
 | complete_annealing | 退火完成。 | Annealing completed. |
-| error_display_rays | 显示最优中心射线失败：{error} | Failed to display optimal rays: {error} |
 | error_ellipse | 椭圆拟合失败：{error} | Ellipse fitting failed: {error} |
 
 ## 文件操作
