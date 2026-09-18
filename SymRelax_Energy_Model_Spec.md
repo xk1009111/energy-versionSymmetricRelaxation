@@ -82,6 +82,18 @@ Therefore "computing $\varphi_c$" and "finding optimal rays" **are the solution 
 
 That is: **the energy version inherits the solution but discards the geometric construction** — it only asks "how far is the actual direction off", not "where is the ideal position".
 
+#### Algebraic Equivalence with the Mathematical Version's Least Squares
+
+The mathematical version's ray fit is usually written in ascending-angle form: rank the vertex directions $\theta_1<\theta_2<\cdots<\theta_{n_c}$, set the optimal-ray directions to $\delta_i=\delta_1+2\pi(i-1)/n_c$, and choose
+
+$$\delta_1=\frac{1}{n_c}\Bigl(\sum_{j=1}^{n_c}\theta_j-\pi(n_c-1)\Bigr)$$
+
+to minimize $\sum_{j=1}^{n_c}(\theta_j-\delta_j)^2$. Differentiating the objective w.r.t. $\delta_1$ and setting to zero gives $\delta_1=\frac{1}{n_c}\sum_j\bigl(\theta_j-2\pi(j-1)/n_c\bigr)$, which is **algebraically identical** to the code's $\varphi_c=\frac{1}{n_c}\sum_k(\psi^{\uparrow}_{c,k}-2\pi k/n_c)$ (the index shift $i=k$ vs. $j-1$ is immaterial once the vertices are ordered cyclically and lifted, see §1).
+
+Consequently, the quantity the mathematical version minimizes **once** — $\sum_{j=1}^{n_c}(\theta_j-\delta_j)^2$ — is **exactly** the single-cell center-angle energy $E_{\mathrm{cen},c}=\sum_i\delta_{c,i}^2$. In other words: **$E_{\mathrm{cen}}$ *is* the mathematical version's ray-fit residual, evaluated every iteration.** The mathematical version uses that residual only to orient the rays and then removes it by construction (the triangle-target step); the energy version promotes the residual itself to the objective and reduces it by gradient descent.
+
+**Per (cell, vertex), the deviation is measured against *that cell's own* single ray.** An interior vertex touches three rays (one from each of its three incident cells) and a marginal vertex touches two; but each ray serves only as the angular reference of *its* cell's term, and the rays are **never combined into a triangle or a target point** — that assembly is precisely the geometric construction discarded above.
+
 #### The Role of $\varphi_c$: Gauge Fixing, Not a Target Configuration
 
 $E_{\mathrm{cen}}$ measures "how far the vertex directions deviate from a rigid equiangular fan", but the fan's **overall orientation is irrelevant** — rotating the whole cell should not change its degree of symmetry. The role of $\varphi_c$ is precisely to absorb this redundant orientational degree of freedom.
@@ -248,6 +260,56 @@ $\mathbf F_v=\mathbf F_v^{\mathrm{cen}}+\mathbf F_v^{\mathrm{ang}}$
 
 **The interior-angle force is assembled in edge form**: first compute $\alpha_{v,c}$ and the scalar weight $w_{v,c}$ per corner, then traverse each cell's boundary CCW and scatter $\mathbf g_c(X\!\to\!Y)$ pairwise to the two endpoints per §3.2.2. This disposes of all three contributions (apex + arm endpoints) in one pass, with no need to enumerate roles separately.
 
+### 3.4 Vertex-Level Aggregation: From Scalar Energy to Resultant Force
+
+**Conceptual bridge.** §2 defines two *scalar* energy terms; §3.1–§3.2 give the *force* of each. The present section explains how, at a single vertex $v$, the several scalar deviations it carries are turned into one resultant force direction — and why this is *not* the geometric version's triangle-centroid step.
+
+**A scalar deviation has no direction.** Whether $\delta_{c,i}^{2}$ (center-angle) or $(\alpha-\tau)^{2}$ (interior-angle), the deviation is a single number. The force direction does not come from the number itself; it comes from the *spatial gradient* of that number with respect to the vertex position:
+
+$$\mathbf F_{v}=-\nabla_{\mathbf r_v}\big(\text{scalar terms involving }\mathbf r_v\big)
+=-\frac{\partial(\text{deviation}^{2})}{\partial(\text{deviation})}\cdot\frac{\partial(\text{deviation})}{\partial\mathbf r_v}
+=-2(\text{deviation})\cdot\Big(\frac{\partial\text{deviation}}{\partial\mathbf r_v}\Big).$$
+
+The first factor (magnitude & sign) is the scalar; the second factor (a geometric vector) is the direction.
+
+**Center-angle contribution — tangential, magnitude $\propto|\delta|/\rho$.** For a cell $c$ with local index $i$,
+
+$$\psi=\operatorname{azimuth}(\mathbf r_v-\mathbf O_c),\qquad
+\hat{\mathbf u}=\frac{\mathbf r_v-\mathbf O_c}{\rho},\qquad \rho=|\mathbf r_v-\mathbf O_c|.$$
+
+The gradient of the azimuth is a *tangential* vector:
+
+$$\nabla_{\mathbf r_v}\psi=\frac{1}{\rho}\,J\hat{\mathbf u},\qquad J=\text{+90° rotation}.$$
+
+Hence the per-cell center-angle force on $v$ (ignoring the cell-shared term, §3.1) is
+
+$$\mathbf F^{(c)}_{v}=-2\kappa_c\,\delta_{c,i}\,\frac{1}{\rho}\,J\hat{\mathbf u}\;-\;\mathbf F^{\mathrm{shared}}_c.$$
+
+Three consequences, all visible from this formula:
+- **Direction is tangential** ($\perp$ the centroid line), never radial toward $\mathbf O_c$.
+- **Magnitude $\propto|\delta_{c,i}|$**: larger deviation $\rightarrow$ stronger force; sign flip $\rightarrow$ reversed force.
+- **Magnitude $\propto 1/\rho$**: farther from the centroid, the azimuth is less sensitive to translation, so the force is weaker.
+- **Radial force = 0**: sliding $v$ along the centroid line does not change $\psi$, so $E_{\mathrm{cen}}$ does not drive cell *size* — it is a pure shape force.
+
+(The cell-shared term $-2\kappa_c\mathbf{shared}_c$ is a cell-constant, identical for all vertices of the cell; it enforces the translation zero-mode and cell rigidity, but does not change the per-force *tangential* character above.)
+
+**Interior-angle contribution — along the angle-opening direction.** For each corner (one per cell-vertex) at $v$ with arms $\mathbf a,\mathbf b$ to the previous/next neighbours,
+
+$$\mathbf g_v=\frac{J\hat{\mathbf a}}{|\mathbf a|}-\frac{J\hat{\mathbf b}}{|\mathbf b|},
+\qquad \mathbf F^{\mathrm{corner}}_v=-2\kappa_a\,(\alpha-\tau_v)\,\mathbf g_v.$$
+
+The direction $\mathbf g_v$ points along the angle bisector (opening/closing the angle); the magnitude $\propto|\alpha-\tau_v|$. The same corner also couples to its two neighbouring vertices (§3.2.2), so each interior-angle contribution is scattered to three vertices.
+
+**Resultant = vector sum, no triangle, no target point.** For a degree-3 interior vertex shared by cells $c_1,c_2,c_3$ with local indices $i_1,i_2,i_3$ and three interior angles $\alpha_1,\alpha_2,\alpha_3$,
+
+$$\mathbf F_v=-\sum_{k=1}^{3}\Big[\,2\kappa_c\big(\delta_{c_k,i_k}\tfrac{1}{\rho_k}J\hat{\mathbf u}_k-\mathbf{shared}_{c_k}\big)\Big]
+\;-\;\sum_{k=1}^{3}\Big[\,2\kappa_a(\alpha_k-\tfrac{2\pi}{3})\,\mathbf g^{(k)}_v\Big]
+\;+\;\text{(neighbour-coupling terms)}.$$
+
+All center-angle and interior-angle gradient vectors are accumulated onto the shared vertex by `np.add.at` (energy.py). **The three rays / three deviations are never assembled into a triangle or an absolute target position** — that geometric construction is precisely what the energy version discards (§2.2). Instead, the three scalar energies are differentiated and their gradient vectors are added.
+
+**Contrast with the mathematical version.** The mathematical version fits the $n_c$ optimal rays, then for each vertex takes the *three* rays from its three cells, forms the *triangle* of three rays, and moves the vertex to the triangle's centroid — a single absolute target point. The energy version replaces this with: each ray yields one scalar residual $\delta^{2}$, each forms one gradient vector, and the three vectors are summed into a resultant force; the vertex moves along $-\mathbf F_v$ (then line-searched). Because the two versions optimize *different objectives* (an explicit target point vs. the net-force-zero of a single scalar $E$), their optima do **not** coincide exactly — which is exactly why the measured $\lambda=1$ result only *approximately* reproduces the mathematical version.
+
 ***
 
 ## 4. Dynamics and Motion
@@ -305,13 +367,13 @@ The force magnitude naturally shrinks as equilibrium is approached ($\mathbf F\p
 
 ## 6. Correspondence with the Mathematical Version
 
-| Mathematical version (geometric rules)                                     | Energy version (variational interpretation)                                                                                                                                                                                                                                | <br />       | <br />                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Least-squares fit of $n_c$ optimal rays with angle $2\pi/n_c$              | The same least-squares problem, but **only its solution** **$\varphi_c$** **is taken** (closed form: arithmetic mean) as the measurement reference; the geometric construction of rays is discarded (§2.2)                                                                 | <br />       | <br />                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| Three optimal rays form a triangle; its centroid is the target point       | **No target point is generated**; instead a gradient-descent step on $\mathbf r_v$ replaces that closed-form step. Consequence: the radius is no longer directly constrained by $E_{\mathrm{cen}}$ (§2.2)                                                                  | <br />       | <br />                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| Cancel the move if it increases $\sum\alpha^2$                             | The hard-constraint limit of $E_{\mathrm{ang}}$ ($\lambda\to\infty$)                                                                                                                                                                                                       | <br />       | <br />                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| Boundary point moves toward the midpoint along the edge of the small angle | Steepest descent on the **full boundary interior-angle energy** $\tfrac12(\beta_1-\beta_2)^2+\tfrac12(\beta_1+\beta_2-\pi)^2$ on the 1-D boundary manifold, subject to the tangent-projection constraint (§4.2, taking the larger projection among the two boundary edges) | <br />       | <br />                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| Move serially in **descending** annealing-distance order                   | **Serial descending order** (Gauss–Seidel serial update in descending \$                                                                                                                                                                                                   | \mathbf F\_v | \$ order): vertices move one by one in descending force magnitude, each doing its own line search with the convexity guard localized to its incident cells. This aligns semantically with the geometric version's "descending annealing-distance" order; unlike the synchronous scheme — where one cell flipping non-convex vetoes the whole step globally and freezes large random networks — the serial scheme does not. |
+| Mathematical version (geometric rules)                                     | Energy version (variational interpretation) |
+| -------------------------------------------------------------------------- | ------------------------------------------- |
+| Least-squares fit of $n_c$ optimal rays with angle $2\pi/n_c$              | The same least-squares problem, but **only its solution $\varphi_c$ is taken** (closed form: arithmetic mean) as the measurement reference; the geometric construction of rays is discarded (§2.2) |
+| Three optimal rays form a triangle; its centroid is the target point       | **No target point is generated**; instead a gradient-descent step on $\mathbf r_v$ replaces that closed-form step. Consequence: the radius is no longer directly constrained by $E_{\mathrm{cen}}$ (§2.2) |
+| Cancel the move if it increases $\sum\alpha^2$                             | The hard-constraint limit of $E_{\mathrm{ang}}$ ($\lambda\to\infty$) |
+| Boundary point moves toward the midpoint along the edge of the small angle | Steepest descent on the **full boundary interior-angle energy** $\tfrac12(\beta_1-\beta_2)^2+\tfrac12(\beta_1+\beta_2-\pi)^2$ on the 1-D boundary manifold, subject to the tangent-projection constraint (§4.2, taking the larger projection among the two boundary edges) |
+| Move serially in **descending** annealing-distance order                   | **Serial descending order** (Gauss–Seidel serial update in descending $|\mathbf F_v|$ order): vertices move one by one in descending force magnitude, each doing its own line search with the convexity guard localized to its incident cells. This aligns semantically with the geometric version's "descending annealing-distance" order; unlike the synchronous scheme — where one cell flipping non-convex vetoes the whole step globally and freezes large random networks — the serial scheme does not. |
 
 **Overall relationship**: the mathematical version = alternating minimization of $E_{\mathrm{cen}}$ (first fix the phase in closed form, then fix the target point analytically) + treating $E_{\mathrm{ang}}$ as a hard constraint; the energy version = **serial-descending (Gauss–Seidel) soft-weighted minimization** of $E_{\mathrm{cen}}+\lambda E_{\mathrm{ang}}$. **The two belong to the same family; no claim of full equivalence is made.**
 
@@ -536,6 +598,18 @@ $E=\kappa_cE_{\mathrm{cen}}+\kappa_aE_{\mathrm{ang}}$
 
 即：**能量版继承解，丢弃几何构造**——只问「实际方向偏了多少」，不问「理想位置在哪」。
 
+#### 与数学版最小二乘的具体代数等价
+
+数学版射线拟合常写作升序角度形式：把顶点方向按 $\theta_1<\theta_2<\cdots<\theta_{n_c}$ 排序，令最优射线方向为 $\delta_i=\delta_1+2\pi(i-1)/n_c$，并取
+
+$$\delta_1=\frac{1}{n_c}\Bigl(\sum_{j=1}^{n_c}\theta_j-\pi(n_c-1)\Bigr)$$
+
+以最小化 $\sum_{j=1}^{n_c}(\theta_j-\delta_j)^2$。对该目标关于 $\delta_1$ 求导并令为零，即 $\delta_1=\frac{1}{n_c}\sum_j\bigl(\theta_j-2\pi(j-1)/n_c\bigr)$——这与代码中的 $\varphi_c=\frac{1}{n_c}\sum_k(\psi^{\uparrow}_{c,k}-2\pi k/n_c)$ **代数恒等**（顶点按循环序排列并提升后，指标 $i=k$ 与 $j-1$ 之差无关紧要，见 §1）。
+
+于是，数学版**一次性**最小化的那个量 $\sum_{j=1}^{n_c}(\theta_j-\delta_j)^2$，**正是**单细胞中心角能量 $E_{\mathrm{cen},c}=\sum_i\delta_{c,i}^2$。换言之：**$E_{\mathrm{cen}}$ 就是数学版射线拟合的残差，在每一步迭代中持续求值。** 数学版只拿残差来定射线朝向、再用作图（三角形目标点）把它消除；能量版把残差本身立为目标，用梯度下降持续压低它。
+
+**对每个（细胞, 顶点），偏差只对「该细胞自己的那一条射线」量。** 内顶点会碰到 3 条射线（来自其 3 个所属细胞）、边缘顶点碰到 2 条；但每条射线只充当**其所在细胞那一项**的量角基准，射线之间**从不拼成三角形或目标点**——那个组合正是上文丢弃的几何构造。
+
 #### $\varphi_c$ 的角色：规范固定（gauge fixing），而非目标构型
 
 $E_{\mathrm{cen}}$ 度量的是「顶点方向相对一个刚性等角扇形的偏差」，而该扇形的**整体朝向是无关的**——细胞整体旋转不应改变它的对称程度。$\varphi_c$ 的作用正是吸收这个多余的朝向自由度。
@@ -702,6 +776,56 @@ $\mathbf F_v=\mathbf F_v^{\mathrm{cen}}+\mathbf F_v^{\mathrm{ang}}$
 
 **内角力采用边形式装配**：先逐角算 $\alpha_{v,c}$ 与标量权重 $w_{v,c}$，再逐细胞沿 CCW 遍历其边界，按 §3.2.2 把 $\mathbf g_c(X\!\to\!Y)$ 成对散到两端点。这样「角顶 + 臂端点」三类贡献一次到位，无需单独枚举角色。
 
+### 3.4 顶点层力聚合：从标量能量到合力
+
+**概念桥梁。** §2 定义两个**标量**能量项；§3.1–§3.2 给出各项的**力**。本节说明：在一个顶点 $v$ 处，它所携带的若干标量偏差，如何汇成**一个合力方向**——以及为何这**不是**几何版「三角形质心」那一步。
+
+**标量偏差本身没有方向。** 无论 $\delta_{c,i}^{2}$（中心角）还是 $(\alpha-\tau)^{2}$（内角），偏差只是一个数。力的方向不来自这个数本身，而来自这个数**对顶点位置的空间梯度**：
+
+$$\mathbf F_{v}=-\nabla_{\mathbf r_v}\big(\text{含 }\mathbf r_v\text{ 的标量项}\big)
+=-\frac{\partial(\text{偏差}^{2})}{\partial(\text{偏差})}\cdot\frac{\partial(\text{偏差})}{\partial\mathbf r_v}
+=-2(\text{偏差})\cdot\Big(\frac{\partial\text{偏差}}{\partial\mathbf r_v}\Big).$$
+
+第一因子（大小与符号）是标量；第二因子（一个几何向量）才是方向。
+
+**中心角贡献 —— 切向，大小 $\propto|\delta|/\rho$。** 对局部索引为 $i$ 的细胞 $c$，
+
+$$\psi=\operatorname{azimuth}(\mathbf r_v-\mathbf O_c),\qquad
+\hat{\mathbf u}=\frac{\mathbf r_v-\mathbf O_c}{\rho},\qquad \rho=|\mathbf r_v-\mathbf O_c|.$$
+
+方位角的梯度是一个**切向向量**：
+
+$$\nabla_{\mathbf r_v}\psi=\frac{1}{\rho}\,J\hat{\mathbf u},\qquad J=\text{+90° 旋转}.$$
+
+故细胞 $c$ 作用在 $v$ 上的中心角力（暂不计细胞共享项，见 §3.1）为
+
+$$\mathbf F^{(c)}_{v}=-2\kappa_c\,\delta_{c,i}\,\frac{1}{\rho}\,J\hat{\mathbf u}\;-\;\mathbf F^{\mathrm{shared}}_c.$$
+
+由式可见四点：
+- **方向为切向**（⊥ 质心连线），而非指向质心 $\mathbf O_c$。
+- **大小 $\propto|\delta_{c,i}|$**：偏差越大力越强；偏差变号力反向。
+- **大小 $\propto 1/\rho$**：$v$ 离质心越远，方位角对平移越不敏感，力越弱。
+- **径向力 = 0**：沿质心连线滑动 $v$ 不改变 $\psi$，故 $E_{\mathrm{cen}}$ 不驱动细胞**大小**——它是纯形状力。
+
+（细胞共享项 $-2\kappa_c\mathbf{shared}_c$ 是细胞级常量，对细胞内各顶点相同；它负责平移零模与细胞刚性，但不改变上述每力**切向**的本质。）
+
+**内角贡献 —— 沿张角方向。** 对 $v$ 处每个角（每个 (顶点, 细胞) 对），设其连向前后邻居的两条臂为 $\mathbf a,\mathbf b$，
+
+$$\mathbf g_v=\frac{J\hat{\mathbf a}}{|\mathbf a|}-\frac{J\hat{\mathbf b}}{|\mathbf b|},
+\qquad \mathbf F^{\mathrm{corner}}_v=-2\kappa_a\,(\alpha-\tau_v)\,\mathbf g_v.$$
+
+方向 $\mathbf g_v$ 沿角平分线（张开/收紧该角）；大小 $\propto|\alpha-\tau_v|$。同一角还通过 §3.2.2 与它的两个相邻顶点耦合，故每个内角贡献被散到三个顶点。
+
+**合力 = 矢量求和，无三角形、无目标点。** 对由细胞 $c_1,c_2,c_3$ 共享、局部索引分别为 $i_1,i_2,i_3$、带三个内角 $\alpha_1,\alpha_2,\alpha_3$ 的度 3 内部顶点，
+
+$$\mathbf F_v=-\sum_{k=1}^{3}\Big[\,2\kappa_c\big(\delta_{c_k,i_k}\tfrac{1}{\rho_k}J\hat{\mathbf u}_k-\mathbf{shared}_{c_k}\big)\Big]
+\;-\;\sum_{k=1}^{3}\Big[\,2\kappa_a(\alpha_k-\tfrac{2\pi}{3})\,\mathbf g^{(k)}_v\Big]
+\;+\;\text{（邻居耦合项）}.$$
+
+所有中心角与内角梯度向量均通过 `np.add.at` 累加到共享顶点上（energy.py）。**三条射线 / 三个偏差从不拼成三角形或绝对目标位置**——那个几何构造正是能量版丢弃的部分（§2.2）。取而代之的是：三个标量能量各自求导，其梯度向量矢量求和。
+
+**与数学版对照。** 数学版拟合 $n_c$ 条最优射线后，对每个顶点取其 3 个所属细胞的 3 条射线、围成三角形、把顶点移到三角形质心——一个绝对目标点。能量版用以下方式取代：每条射线给出一个标量残差 $\delta^{2}$，每个残差形成一个梯度向量，三个向量求和成合力；顶点沿 $-\mathbf F_v$ 移动（再经线搜索）。由于两版优化的**目标不同**（显式目标点 vs. 单一标量 $E$ 的合力为零），其最优解**不会完全重合**——这也正是实测「$\lambda=1$ 大致复现数学版、但不完全一样」的原因。
+
 ***
 
 ## 4. 动力学与移动
@@ -760,13 +884,13 @@ $\boxed{\ \mathbf r_v\leftarrow\mathbf r_v+\text{step}\cdot\mathbf F_v\ },\qquad
 
 ## 6. 与数学版的对应关系
 
-| 数学版（几何规则）                         | 能量版（变分解释）                                                                                                              | <br />       | <br />                                                                                                                            |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | :----------- | :-------------------------------------------------------------------------------------------------------------------------------- |
-| 最小二乘拟合 $n_c$ 条夹角 $2\pi/n_c$ 的最优射线 | 同一个最小二乘问题，**只取其解** **$\varphi_c$**（闭式：算术平均）作为测量基准；射线的几何构造被丢弃（§2.2）                                                     | <br />       | <br />                                                                                                                            |
-| 三条最优射线构成三角形，取质心为目标点               | **不生成目标点**；改由对 $\mathbf r_v$ 的梯度下降替代该闭式步。连带后果：半径不再被 $E_{\mathrm{cen}}$ 直接约束（§2.2）                                      | <br />       | <br />                                                                                                                            |
-| 移动若使 $\sum\alpha^2$ 增大则取消         | $E_{\mathrm{ang}}$ 的硬约束极限（$\lambda\to\infty$）                                                                          | <br />       | <br />                                                                                                                            |
-| 边缘点沿小角对应边向中点移动                    | 在边界一维流形上对**完整的边缘内角能量** $\tfrac12(\beta_1-\beta_2)^2+\tfrac12(\beta_1+\beta_2-\pi)^2$ 做最速下降，并受切向投影约束（§4.2，两条边界边中取投影最大者） | <br />       | <br />                                                                                                                            |
-| 按退火距离**降序**、逐个串行移动                | **串行降序**（按 \$                                                                                                          | \mathbf F\_v | \$ 降序的 Gauss–Seidel 串行更新）：顶点按受力大小降序逐个移动，每个顶点各自做线搜索、凸性守卫局部化到其入射细胞。这与几何版「退火距离降序」语义对齐；与同步方案不同——同步时任一起始凸细胞被翻成非凸会整体否决整步、令大随机网冻结，串行则不会。 |
+| 数学版（几何规则）                         | 能量版（变分解释） |
+| --------------------------------- | -------- |
+| 最小二乘拟合 $n_c$ 条夹角 $2\pi/n_c$ 的最优射线 | 同一个最小二乘问题，**只取其解 $\varphi_c$**（闭式：算术平均）作为测量基准；射线的几何构造被丢弃（§2.2） |
+| 三条最优射线构成三角形，取质心为目标点               | **不生成目标点**；改由对 $\mathbf r_v$ 的梯度下降替代该闭式步。连带后果：半径不再被 $E_{\mathrm{cen}}$ 直接约束（§2.2） |
+| 移动若使 $\sum\alpha^2$ 增大则取消         | $E_{\mathrm{ang}}$ 的硬约束极限（$\lambda\to\infty$） |
+| 边缘点沿小角对应边向中点移动                    | 在边界一维流形上对**完整的边缘内角能量** $\tfrac12(\beta_1-\beta_2)^2+\tfrac12(\beta_1+\beta_2-\pi)^2$ 做最速下降，并受切向投影约束（§4.2，两条边界边中取投影最大者） |
+| 按退火距离**降序**、逐个串行移动                | **串行降序**（按 $|\mathbf F_v|$ 降序的 Gauss–Seidel 串行更新）：顶点按受力大小降序逐个移动，每个顶点各自做线搜索、凸性守卫局部化到其入射细胞。这与几何版「退火距离降序」语义对齐；与同步方案不同——同步时任一起始凸细胞被翻成非凸会整体否决整步、令大随机网冻结，串行则不会。 |
 
 **总关系**：数学版 = 对 $E_{\mathrm{cen}}$ 交替最小化（先闭式定相位、再解析定目标点）+ 把 $E_{\mathrm{ang}}$ 当硬约束；能量版 = 对 $E_{\mathrm{cen}}+\lambda E_{\mathrm{ang}}$ **串行降序（Gauss–Seidel）软加权最小化**。**二者属同一族，不声称完全等价。**
 
